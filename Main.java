@@ -4,7 +4,12 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import javax.swing.filechooser.*;
+
 import java.io.*;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Main implements ActionListener, KeyListener {
     JFrame mainframe;
@@ -128,7 +133,7 @@ public class Main implements ActionListener, KeyListener {
         MenuBar.add(help);
 
         code_area = new JTextArea();
-        code_area.setBounds(5, 5, 360, 320);
+        code_area.setBounds(5, 5, 975, 525);
         code_area.setBackground(Code_BG);
         code_area.setForeground(ForeColor1);
         code_area.addKeyListener(this);
@@ -139,8 +144,9 @@ public class Main implements ActionListener, KeyListener {
         mainframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         mainframe.setJMenuBar(MenuBar);
+        mainframe.setTitle("Pirate Studio Code");
         mainframe.setLayout(null);
-        mainframe.setSize(400, 400);
+        mainframe.setSize(1000, 600);
         mainframe.setVisible(true);
     }
 
@@ -160,7 +166,40 @@ public class Main implements ActionListener, KeyListener {
     }
 
     public static void main(String[] args) {
+        String input = "11 + 22 - 33";
+        ArrayList<Token> tokens = lex(input);
+        for (Token token : tokens) {
+            System.out.println("(" + token.getTipo() + ": " + token.getValor() + ")");
+        }
         new Main();
+    }
+
+    private static ArrayList<Token> lex(String input) {
+        final ArrayList<Token> tokens = new ArrayList<Token>();
+        final StringTokenizer st = new StringTokenizer(input);
+
+        while (st.hasMoreTokens()) {
+            String palabra = st.nextToken();
+            boolean matched = false;
+
+            for (Tipos tokenTipo : Tipos.values()) {
+                Pattern patron = Pattern.compile(tokenTipo.patron);
+                Matcher matcher = patron.matcher(palabra);
+                if (matcher.find()) {
+                    Token tk = new Token();
+                    tk.setTipo(tokenTipo);
+                    tk.setValor(palabra);
+                    tokens.add(tk);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                throw new RuntimeException("Se encontró un token invalido.");
+            }
+        }
+
+        return tokens;
     }
 
     @Override
