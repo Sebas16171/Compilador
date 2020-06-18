@@ -5,35 +5,80 @@ import java.util.*;
 import java.util.List;
 import javax.swing.filechooser.*;
 
+import codigo.Tokens;
+
 import java.io.*;
-import java.util.ArrayList;
-import java.util.StringTokenizer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Main implements ActionListener, KeyListener {
-    JFrame mainframe;
+
+    public static String ruta;
+
+    static JFrame mainframe;
     JMenuBar MenuBar;
     JMenu file, edit, help;
     JMenuItem cut, copy, paste, selectAll, mnew, open, save;
     static JTextArea code_area;
 
+    public static void Lexer() {
+        try {
+            File asmFile = new File(ruta);
+            Reader lector = new BufferedReader(new FileReader(asmFile));
+            Lexer lexer = new Lexer(lector);
+            String resultado = "";
+
+            while (true) {
+                Tokens tokens = lexer.yylex();
+                if (tokens == null) {
+                    resultado += "FIN";
+                    JOptionPane.showMessageDialog(null, resultado);
+                    return;
+                }
+                switch (tokens) {
+                    case ERROR:
+                        resultado += "Simbolo no definido\n";
+                        break;
+                    case Identificador:
+                    case Numero:
+                    case Reservadas:
+                        resultado += "Es un " + tokens + "\n";
+                        break;
+                    default:
+                        resultado += "Token: " + tokens + "\n";
+
+                }
+            }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
     public static boolean debug() {
         String lineas[] = code_area.getText().split("\\r?\\n");
 
-        
-        if(!lineas[lineas.length - 1].trim().equals("end")){
+        if (!lineas[lineas.length - 1].trim().equals("end")) {
             return false;
         }
 
         return true;
     }
 
+    public static void save_file() throws Exception {
+        System.out.println(code_area.getText());
+        File asmFile = new File(ruta);
+        FileWriter writer = new FileWriter(asmFile);
+        PrintWriter printer = new PrintWriter(writer);
+        printer.println(code_area.getText());
+        writer.close();
+    }
+
     public static void select_file() {
 
         JFileChooser chooser = new JFileChooser();
         FileNameExtensionFilter filter = new FileNameExtensionFilter("Assembly code files", "asm");
-        String ruta = "";
 
         chooser.setFileFilter(filter);
         int returnVal = chooser.showOpenDialog(null);
@@ -49,15 +94,11 @@ public class Main implements ActionListener, KeyListener {
                 }
                 sc.close();
 
+                mainframe.setTitle("Pirate Studio Code - " + asmFile.getName());
+
             } catch (Exception e) {
                 System.out.print("Se murio");
             }
-        }
-    }
-
-    public static void fill_area(List<String> code) {
-        for (int i = 0; i < code.size(); i++) {
-            code_area.append(code.get(i) + '\n');
         }
     }
 
@@ -150,6 +191,12 @@ public class Main implements ActionListener, KeyListener {
         mainframe.setVisible(true);
     }
 
+    public static void fill_area(List<String> code) {
+        for (int i = 0; i < code.size(); i++) {
+            code_area.append(code.get(i) + '\n');
+        }
+    }
+
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == cut)
             code_area.cut();
@@ -163,43 +210,24 @@ public class Main implements ActionListener, KeyListener {
         if (e.getSource() == open) {
             select_file();
         }
+        if (e.getSource() == save) {
+            try {
+                save_file();
+            } catch (Exception e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
+        }
     }
 
     public static void main(String[] args) {
-        String input = "11 + 22 - 33";
-        ArrayList<Token> tokens = lex(input);
-        for (Token token : tokens) {
-            System.out.println("(" + token.getTipo() + ": " + token.getValor() + ")");
-        }
         new Main();
     }
 
-    private static ArrayList<Token> lex(String input) {
-        final ArrayList<Token> tokens = new ArrayList<Token>();
-        final StringTokenizer st = new StringTokenizer(input);
-
-        while (st.hasMoreTokens()) {
-            String palabra = st.nextToken();
-            boolean matched = false;
-
-            for (Tipos tokenTipo : Tipos.values()) {
-                Pattern patron = Pattern.compile(tokenTipo.patron);
-                Matcher matcher = patron.matcher(palabra);
-                if (matcher.find()) {
-                    Token tk = new Token();
-                    tk.setTipo(tokenTipo);
-                    tk.setValor(palabra);
-                    tokens.add(tk);
-                    matched = true;
-                }
-            }
-
-            if (!matched) {
-                throw new RuntimeException("Se encontró un token invalido.");
-            }
-        }
-
-        return tokens;
+    public static void generarLexer() {
+        String ruta = "D:/Documentos/Uni/Cuatri 3/Software de Sistemas/Compilador/Lexer.flex";
+        File archivo = new File(ruta);
+        JFlex.Main.generate(archivo);
     }
 
     @Override
@@ -211,13 +239,34 @@ public class Main implements ActionListener, KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         // TODO Auto-generated method stub
-        if (e.getKeyCode() == KeyEvent.VK_F5){
+        if (e.getKeyCode() == KeyEvent.VK_F5) {
+            try {
+                save_file();
+            } catch (Exception e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
+            Lexer();
             if (debug()) {
                 JOptionPane.showMessageDialog(null, "Jala");
             } else {
                 JOptionPane.showMessageDialog(null, "No jala");
             }
         }
+
+        if ((e.getKeyCode() == KeyEvent.VK_S) && (e.getModifiers() & KeyEvent.CTRL_MASK) != 0) {
+            try {
+                save_file();
+            } catch (Exception e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
+        }
+
+        if ((e.getKeyCode() == KeyEvent.VK_O) && (e.getModifiers() & KeyEvent.CTRL_MASK) != 0) {
+            select_file();
+        }
+        
 
     }
 
