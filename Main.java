@@ -4,8 +4,11 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import javax.swing.filechooser.*;
+import java.util.regex.*;
 
 import codigo.Tokens;
+import codigo.Token;
+import codigo.Token.*;
 
 import java.io.*;
 
@@ -18,6 +21,39 @@ public class Main implements ActionListener, KeyListener {
     JMenu file, edit, help;
     JMenuItem cut, copy, paste, selectAll, mnew, open, save;
     static JTextArea code_area;
+
+    private static ArrayList<Token> lex(String input) {
+        final ArrayList<Token> tokens = new ArrayList<Token>();
+        final StringTokenizer st = new StringTokenizer(input);
+        boolean end_found = false;
+
+        while (st.hasMoreTokens()) {
+            String palabra = st.nextToken();
+            boolean matched = false;
+
+            for (Tipos tokenTipo : Tipos.values()) {
+                Pattern patron = Pattern.compile(tokenTipo.patron);
+                Matcher matcher = patron.matcher(palabra);
+                if (matcher.find()) {
+                    Token tk = new Token();
+                    tk.setProcesed(!end_found);
+                    tk.setTipo(tokenTipo);
+                    tk.setValor(palabra);
+                    tokens.add(tk);
+                    matched = true;
+                    if (tk.getTipo() == Tipos.FINAL){
+                        end_found = true;
+                    }
+                }
+            }
+
+            if (!matched) {
+                //throw new RuntimeException("Se encontró un token invalido.");
+            }
+        }
+
+        return tokens;
+    }
 
     public static void Lexer() {
         try {
@@ -191,12 +227,6 @@ public class Main implements ActionListener, KeyListener {
         mainframe.setVisible(true);
     }
 
-    public static void fill_area(List<String> code) {
-        for (int i = 0; i < code.size(); i++) {
-            code_area.append(code.get(i) + '\n');
-        }
-    }
-
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == cut)
             code_area.cut();
@@ -222,12 +252,7 @@ public class Main implements ActionListener, KeyListener {
 
     public static void main(String[] args) {
         new Main();
-    }
-
-    public static void generarLexer() {
-        String ruta = "D:/Documentos/Uni/Cuatri 3/Software de Sistemas/Compilador/Lexer.flex";
-        File archivo = new File(ruta);
-        JFlex.Main.generate(archivo);
+        
     }
 
     @Override
@@ -243,15 +268,13 @@ public class Main implements ActionListener, KeyListener {
             try {
                 save_file();
             } catch (Exception e1) {
-                // TODO Auto-generated catch block
                 e1.printStackTrace();
             }
-            Lexer();
-            if (debug()) {
-                JOptionPane.showMessageDialog(null, "Jala");
-            } else {
-                JOptionPane.showMessageDialog(null, "No jala");
+            ArrayList<Token> tokens = lex(code_area.getText());
+            for (Token token : tokens) {
+                System.out.println("(" + token.getTipo() + ": " + token.getValor() + " | SE PROCESA: " + token.getProcessed() +")");
             }
+            //Lexer();
         }
 
         if ((e.getKeyCode() == KeyEvent.VK_S) && (e.getModifiers() & KeyEvent.CTRL_MASK) != 0) {
