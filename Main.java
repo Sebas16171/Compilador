@@ -23,9 +23,12 @@ public class Main implements ActionListener, KeyListener {
     static JTextArea code_area;
 
     private static ArrayList<Token> lex(String input) {
+
         final ArrayList<Token> tokens = new ArrayList<Token>();
+
         final StringTokenizer st = new StringTokenizer(input);
-        boolean end_found = false;
+
+        int end_counter = 0;
 
         while (st.hasMoreTokens()) {
             String palabra = st.nextToken();
@@ -36,23 +39,42 @@ public class Main implements ActionListener, KeyListener {
                 Matcher matcher = patron.matcher(palabra);
                 if (matcher.find()) {
                     Token tk = new Token();
-                    tk.setProcesed(!end_found);
+                    if (tokenTipo == Tipos.COMENTARIO || end_counter > 0) {
+                        tk.setProcesed(false);
+                    }else{
+                        tk.setProcesed(true);
+                    }
                     tk.setTipo(tokenTipo);
                     tk.setValor(palabra);
+                    if (tokenTipo == Tipos.ETIQUETA) {
+                        tokens.remove(tokens.size() -1);
+                    }
                     tokens.add(tk);
                     matched = true;
                     if (tk.getTipo() == Tipos.FINAL){
-                        end_found = true;
+                        end_counter++;
                     }
                 }
             }
 
             if (!matched) {
-                //throw new RuntimeException("Se encontró un token invalido.");
+                System.out.println("Se encontró un token invalido: " + palabra);
             }
         }
 
-        return tokens;
+        switch (end_counter) {
+            case 0:
+                JOptionPane.showMessageDialog(null, "No se encontró un end.", "Error", JOptionPane.ERROR_MESSAGE);
+                break;
+            case 1:
+                return tokens;        
+            default:
+                JOptionPane.showMessageDialog(null, "Solo debe haber un end.\n" + end_counter + " encontrados.", "Error", JOptionPane.ERROR_MESSAGE);
+                break;
+        }
+
+        return null;
+
     }
 
     public static void Lexer() {
@@ -90,16 +112,6 @@ public class Main implements ActionListener, KeyListener {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-    }
-
-    public static boolean debug() {
-        String lineas[] = code_area.getText().split("\\r?\\n");
-
-        if (!lineas[lineas.length - 1].trim().equals("end")) {
-            return false;
-        }
-
-        return true;
     }
 
     public static void save_file() throws Exception {
@@ -271,9 +283,12 @@ public class Main implements ActionListener, KeyListener {
                 e1.printStackTrace();
             }
             ArrayList<Token> tokens = lex(code_area.getText());
+            String result = "";
             for (Token token : tokens) {
-                System.out.println("(" + token.getTipo() + ": " + token.getValor() + " | SE PROCESA: " + token.getProcessed() +")");
+                result += "(" + token.getTipo() + ": " + token.getValor() + " | SE PROCESA: " + token.getProcessed() + ")\n";
+                //System.out.println("(" + token.getTipo() + ": " + token.getValor() + " | SE PROCESA: " + token.getProcessed() +")");
             }
+            JOptionPane.showMessageDialog(null, result);
             //Lexer();
         }
 

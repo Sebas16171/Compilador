@@ -2,6 +2,21 @@ package codigo;
 
 public class Token {
 
+    public enum Tipos {
+        NUMERO("[0-9]+"), OPERADOR_BINARIO("[*|/|+|-|=]"), FINAL("end"), RESERVADAS("[mov]"), VAR("al|bl|cl"),
+        COMENTARIO("[;-]"), ETIQUETA("[-:]");
+
+        public final String patron;
+
+        Tipos(String s) {
+            this.patron = s;
+        }
+    }
+
+    private Tipos tipo;
+    private String valor;
+    private boolean processed;
+
     public Tipos getTipo() {
         return tipo;
     }
@@ -24,21 +39,6 @@ public class Token {
 
     public void setValor(String valor) {
         this.valor = valor;
-    }
-
-    private Tipos tipo;
-    private String valor;
-    private boolean processed;
-
-    public enum Tipos {
-        NUMERO("[0-9]+"), OPERADOR_BINARIO("[*|/|+|-]"), FINAL("[end]"), DEF("[mov]"), COMENTARIO("[;]");
-        //, RESERVADA("[;|:|=|/|+|-|*|.|.186|.286|.286c|and|arg|assume|byte]");
-
-        public final String patron;
-
-        Tipos(String s) {
-            this.patron = s;
-        }
     }
 
 }
