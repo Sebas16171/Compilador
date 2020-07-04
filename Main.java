@@ -36,6 +36,9 @@ public class Main implements ActionListener, KeyListener {
     private static ArrayList<Token> lex(String input) {
 
         final ArrayList<Token> tokens = new ArrayList<Token>();
+        etiquetas.clear();
+        index_etiquetas.clear();
+        Lineas.clear();
         int end_counter = 0;
         String Lineas[] = input.split("\\r?\\n"), comentario = "";
         int line_counter = 0;
@@ -50,16 +53,14 @@ public class Main implements ActionListener, KeyListener {
             final StringTokenizer st = new StringTokenizer(Linea);
 
             if (Linea.trim().endsWith(":")){
-                if (Registrar_Etiqueta(Linea)){
+                Token tk = new Token();
+                tk.setProcesed(Registrar_Etiqueta(Linea));
+                tk.setTipo(Tipos.ETIQUETA);
+                tk.setValor(Linea);
+                if (Registrar_Etiqueta(Linea)) {
                     etiquetas.add(Linea);
-                    Token tk = new Token();
-                    tk.setProcesed(true);
-                    tk.setTipo(Tipos.ETIQUETA);
-                    tk.setValor(Linea);
-                    tokens.add(tk);
-                } else {
-                    matched = false;
                 }
+                tokens.add(tk);
             } else {
                 while (st.hasMoreTokens()) {
                     String palabra = st.nextToken();
@@ -348,9 +349,6 @@ public class Main implements ActionListener, KeyListener {
     public void keyPressed(KeyEvent e) {
         // TODO Auto-generated method stub
         if (e.getKeyCode() == KeyEvent.VK_F5) {
-            etiquetas.clear();
-            index_etiquetas.clear();
-            Lineas.clear();
             try {
                 save_file();
             } catch (Exception e1) {
@@ -360,17 +358,14 @@ public class Main implements ActionListener, KeyListener {
             String result = "";
             for (Token token : tokens) {
                 result += "(" + token.getTipo() + ": " + token.getValor() + " | SE PROCESA: " + token.getProcessed() + ")\n";
-                //System.out.println("(" + token.getTipo() + ": " + token.getValor() + " | SE PROCESA: " + token.getProcessed() +")");
             }
             JOptionPane.showMessageDialog(null, result);
-            //Lexer();
         }
         
         if ((e.getKeyCode() == KeyEvent.VK_S) && (e.getModifiers() & KeyEvent.CTRL_MASK) != 0) {
             try {
                 save_file();
             } catch (Exception e1) {
-                // TODO Auto-generated catch block
                 e1.printStackTrace();
             }
         }
@@ -383,7 +378,8 @@ public class Main implements ActionListener, KeyListener {
             ArrayList<Token> tokens = lex(code_area.getText());
             String codigo_limpio = "";
             for (Token token : tokens) {
-                if ((last == Tipos.SALTO && token.getTipo() == Tipos.SALTO) || (token.getTipo() == Tipos.COMENTARIO)) {
+                if ((last == Tipos.SALTO && token.getTipo() == Tipos.SALTO) || (token.getTipo() == Tipos.COMENTARIO) || (!token.getProcessed() && !token
+                        .getValor().equals("\\n"))) {
                     
                 } else {
                     if (token.getValor().equals("\\n")) {
