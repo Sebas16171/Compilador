@@ -49,63 +49,64 @@ public class Main implements ActionListener, KeyListener {
 
             final StringTokenizer st = new StringTokenizer(Linea);
 
-
-            while (st.hasMoreTokens()) {
-                String palabra = st.nextToken();
-
-                if (comentario_iniciado){
-                    comentario += palabra + " ";
-                    matched = true;
+            if (Linea.trim().endsWith(":")){
+                if (Registrar_Etiqueta(Linea)){
+                    etiquetas.add(Linea);
+                    Token tk = new Token();
+                    tk.setProcesed(true);
+                    tk.setTipo(Tipos.ETIQUETA);
+                    tk.setValor(Linea);
+                    tokens.add(tk);
                 } else {
-
-                    for (Tipos tokenTipo : Tipos.values()) {
-    
-                        Pattern patron = Pattern.compile(tokenTipo.patron);
-                        Matcher matcher = patron.matcher(palabra.trim());
-    
-                        if (matcher.find()) {
-    
-                            if (tokenTipo == Tipos.COMENTARIO || end_counter > 0) {
-                                matched = true;
-                                comentario_iniciado = true;
-                                comentario += palabra + " ";
-                                
-                            } else if (tokenTipo == Tipos.ETIQUETA){}else{
-                                Token tk = new Token();
-                                tk.setProcesed(true);
-                                tk.setTipo(tokenTipo);
-                                tk.setValor(palabra);
-
-                                if (tokenTipo == Tipos.ETIQUETA) {
-                                    if (Registrar_Etiqueta(palabra)) {
-                                        matched = false;
-                                        break;
-                                    } else{
-                                        //tokens.remove(tokens.size() - 1);
-                                        etiquetas.add(palabra);
-                                        index_etiquetas.add(line_counter);                                           
+                    matched = false;
+                }
+            } else {
+                while (st.hasMoreTokens()) {
+                    String palabra = st.nextToken();
+                    if (comentario_iniciado){
+                        comentario += palabra + " ";
+                        matched = true;
+                    } else {
+                        for (Tipos tokenTipo : Tipos.values()) {
+                            Pattern patron = Pattern.compile(tokenTipo.patron);
+                            Matcher matcher = patron.matcher(palabra.trim());
+                            if (matcher.find()) {
+                                if (tokenTipo == Tipos.COMENTARIO || end_counter > 0) {
+                                    matched = true;
+                                    comentario_iniciado = true;
+                                    comentario += palabra + " ";
+                                } else if (tokenTipo == Tipos.ETIQUETA){}else{
+                                    Token tk = new Token();
+                                    tk.setProcesed(true);
+                                    tk.setTipo(tokenTipo);
+                                    tk.setValor(palabra);
+                                    if (tokenTipo == Tipos.ETIQUETA) {
+                                        if (Registrar_Etiqueta(palabra)) {
+                                            matched = false;
+                                            break;
+                                        } else{
+                                            tokens.remove(tokens.size() - 1);
+                                            etiquetas.add(palabra);
+                                            index_etiquetas.add(line_counter);                                           
+                                        }
                                     }
-                                    
-                                }
-                                
-                                tokens.add(tk);
-                                matched = true;
-                                if (tk.getTipo() == Tipos.FINAL){
-                                    end_counter++;
+                                    tokens.add(tk);
+                                    matched = true;
+                                    if (tk.getTipo() == Tipos.FINAL){
+                                        end_counter++;
+                                    }
                                 }
                             }
                         }
                     }
+                    
+                    if (!matched) {
+                        System.out.println("Se encontró un token invalido: " + palabra);
+                    }
+    
                 }
-
-
-                
-
-                if (!matched) {
-                    System.out.println("Se encontró un token invalido: " + palabra);
-                }
-
             }
+
 
             if (comentario_iniciado && comentario.startsWith(";")) {
                 Token tk = new Token();
@@ -144,14 +145,16 @@ public class Main implements ActionListener, KeyListener {
     }
 
     private static boolean Registrar_Etiqueta(String etiqueta){
-        for(String checando : etiquetas){
-            System.out.println("Comparando " + checando + " con " + etiqueta);
-            if (checando.equals(etiqueta)) {
-                System.out.println("Encontrado");
-                return false;
+        if (etiquetas.size() > 0) {
+            
+            for(String checando : etiquetas){
+                System.out.println("Comparando " + checando + " con " + etiqueta);
+                if (checando.equals(etiqueta)) {
+                    System.out.println("Encontrado");
+                    return false;
+                }
             }
         }
-        etiquetas.add(etiqueta);
         return true;
     }
 
@@ -345,6 +348,9 @@ public class Main implements ActionListener, KeyListener {
     public void keyPressed(KeyEvent e) {
         // TODO Auto-generated method stub
         if (e.getKeyCode() == KeyEvent.VK_F5) {
+            etiquetas.clear();
+            index_etiquetas.clear();
+            Lineas.clear();
             try {
                 save_file();
             } catch (Exception e1) {
