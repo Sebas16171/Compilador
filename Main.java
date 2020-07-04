@@ -2,11 +2,9 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.awt.*;
 import java.util.*;
-import java.util.List;
 import javax.swing.filechooser.*;
 import java.util.regex.*;
 
-import codigo.Tokens;
 import codigo.Token;
 import codigo.Token.*;
 
@@ -16,50 +14,115 @@ public class Main implements ActionListener, KeyListener {
 
     public static String ruta;
 
+    public static ArrayList<String> etiquetas = new ArrayList<String>();
+    public static ArrayList<Integer> index_etiquetas = new ArrayList<Integer>();
+    public static ArrayList<Linea> Lineas = new ArrayList<Linea>();
+
     static JFrame mainframe;
     JMenuBar MenuBar;
     JMenu file, edit, help;
     JMenuItem cut, copy, paste, selectAll, mnew, open, save;
     static JTextArea code_area;
 
+/*
+ █████╗ ███╗   ██╗ █████╗ ██╗     ██╗███████╗██╗███████╗
+██╔══██╗████╗  ██║██╔══██╗██║     ██║██╔════╝██║██╔════╝
+███████║██╔██╗ ██║███████║██║     ██║███████╗██║███████╗
+██╔══██║██║╚██╗██║██╔══██║██║     ██║╚════██║██║╚════██║
+██║  ██║██║ ╚████║██║  ██║███████╗██║███████║██║███████║
+╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚═╝╚══════╝╚═╝╚══════╝
+*/
+
     private static ArrayList<Token> lex(String input) {
 
         final ArrayList<Token> tokens = new ArrayList<Token>();
-
-        final StringTokenizer st = new StringTokenizer(input);
-
         int end_counter = 0;
+        String Lineas[] = input.split("\\r?\\n"), comentario = "";
+        int line_counter = 0;
+        boolean matched = false, comentario_iniciado = false;
+        //Tipos Ultimo = null;
 
-        while (st.hasMoreTokens()) {
-            String palabra = st.nextToken();
-            boolean matched = false;
+        for (String Linea : Lineas){
+            line_counter++;
+            comentario = "";
+            comentario_iniciado = false;
 
-            for (Tipos tokenTipo : Tipos.values()) {
-                Pattern patron = Pattern.compile(tokenTipo.patron);
-                Matcher matcher = patron.matcher(palabra);
-                if (matcher.find()) {
-                    Token tk = new Token();
-                    if (tokenTipo == Tipos.COMENTARIO || end_counter > 0) {
-                        tk.setProcesed(false);
-                    }else{
-                        tk.setProcesed(true);
-                    }
-                    tk.setTipo(tokenTipo);
-                    tk.setValor(palabra);
-                    if (tokenTipo == Tipos.ETIQUETA) {
-                        tokens.remove(tokens.size() -1);
-                    }
-                    tokens.add(tk);
+            final StringTokenizer st = new StringTokenizer(Linea);
+
+
+            while (st.hasMoreTokens()) {
+                String palabra = st.nextToken();
+
+                if (comentario_iniciado){
+                    comentario += palabra + " ";
                     matched = true;
-                    if (tk.getTipo() == Tipos.FINAL){
-                        end_counter++;
+                } else {
+
+                    for (Tipos tokenTipo : Tipos.values()) {
+    
+                        Pattern patron = Pattern.compile(tokenTipo.patron);
+                        Matcher matcher = patron.matcher(palabra.trim());
+    
+                        if (matcher.find()) {
+    
+                            if (tokenTipo == Tipos.COMENTARIO || end_counter > 0) {
+                                matched = true;
+                                comentario_iniciado = true;
+                                comentario += palabra + " ";
+                                
+                            } else if (tokenTipo == Tipos.ETIQUETA){}else{
+                                Token tk = new Token();
+                                tk.setProcesed(true);
+                                tk.setTipo(tokenTipo);
+                                tk.setValor(palabra);
+
+                                if (tokenTipo == Tipos.ETIQUETA) {
+                                    if (Registrar_Etiqueta(palabra)) {
+                                        matched = false;
+                                        break;
+                                    } else{
+                                        //tokens.remove(tokens.size() - 1);
+                                        etiquetas.add(palabra);
+                                        index_etiquetas.add(line_counter);                                           
+                                    }
+                                    
+                                }
+                                
+                                tokens.add(tk);
+                                matched = true;
+                                if (tk.getTipo() == Tipos.FINAL){
+                                    end_counter++;
+                                }
+                            }
+                        }
                     }
                 }
+
+
+                
+
+                if (!matched) {
+                    System.out.println("Se encontró un token invalido: " + palabra);
+                }
+
             }
 
-            if (!matched) {
-                System.out.println("Se encontró un token invalido: " + palabra);
+            if (comentario_iniciado && comentario.startsWith(";")) {
+                Token tk = new Token();
+                tk.setProcesed(false);
+                tk.setTipo(Tipos.COMENTARIO);
+                tk.setValor(comentario);
+                tokens.add(tk);
+                comentario_iniciado = false;
+                comentario = "";
             }
+            Token tk = new Token();
+            tk.setProcesed(false);
+            tk.setTipo(Tipos.SALTO);
+            tk.setValor("\\n");
+            tokens.add(tk);
+            
+            
         }
 
         switch (end_counter) {
@@ -67,7 +130,10 @@ public class Main implements ActionListener, KeyListener {
                 JOptionPane.showMessageDialog(null, "No se encontró un end.", "Error", JOptionPane.ERROR_MESSAGE);
                 break;
             case 1:
-                return tokens;        
+                if (matched) {
+                    return tokens;        
+                    
+                }
             default:
                 JOptionPane.showMessageDialog(null, "Solo debe haber un end.\n" + end_counter + " encontrados.", "Error", JOptionPane.ERROR_MESSAGE);
                 break;
@@ -77,41 +143,16 @@ public class Main implements ActionListener, KeyListener {
 
     }
 
-    public static void Lexer() {
-        try {
-            File asmFile = new File(ruta);
-            Reader lector = new BufferedReader(new FileReader(asmFile));
-            Lexer lexer = new Lexer(lector);
-            String resultado = "";
-
-            while (true) {
-                Tokens tokens = lexer.yylex();
-                if (tokens == null) {
-                    resultado += "FIN";
-                    JOptionPane.showMessageDialog(null, resultado);
-                    return;
-                }
-                switch (tokens) {
-                    case ERROR:
-                        resultado += "Simbolo no definido\n";
-                        break;
-                    case Identificador:
-                    case Numero:
-                    case Reservadas:
-                        resultado += "Es un " + tokens + "\n";
-                        break;
-                    default:
-                        resultado += "Token: " + tokens + "\n";
-
-                }
+    private static boolean Registrar_Etiqueta(String etiqueta){
+        for(String checando : etiquetas){
+            System.out.println("Comparando " + checando + " con " + etiqueta);
+            if (checando.equals(etiqueta)) {
+                System.out.println("Encontrado");
+                return false;
             }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
+        etiquetas.add(etiqueta);
+        return true;
     }
 
     public static void save_file() throws Exception {
@@ -149,7 +190,15 @@ public class Main implements ActionListener, KeyListener {
             }
         }
     }
-
+/*
+██╗   ██╗███████╗███╗   ██╗████████╗ █████╗ ███╗   ██╗ █████╗ 
+██║   ██║██╔════╝████╗  ██║╚══██╔══╝██╔══██╗████╗  ██║██╔══██╗
+██║   ██║█████╗  ██╔██╗ ██║   ██║   ███████║██╔██╗ ██║███████║
+╚██╗ ██╔╝██╔══╝  ██║╚██╗██║   ██║   ██╔══██║██║╚██╗██║██╔══██║
+ ╚████╔╝ ███████╗██║ ╚████║   ██║   ██║  ██║██║ ╚████║██║  ██║
+  ╚═══╝  ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+                                                              
+*/
     Main() {
 
         Color Window_BG = new Color(36, 36, 36);
@@ -239,6 +288,15 @@ public class Main implements ActionListener, KeyListener {
         mainframe.setVisible(true);
     }
 
+    /*
+██████╗  ██████╗ ████████╗ ██████╗ ███╗   ██╗███████╗███████╗
+██╔══██╗██╔═══██╗╚══██╔══╝██╔═══██╗████╗  ██║██╔════╝██╔════╝
+██████╔╝██║   ██║   ██║   ██║   ██║██╔██╗ ██║█████╗  ███████╗
+██╔══██╗██║   ██║   ██║   ██║   ██║██║╚██╗██║██╔══╝  ╚════██║
+██████╔╝╚██████╔╝   ██║   ╚██████╔╝██║ ╚████║███████╗███████║
+╚═════╝  ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝
+                                                             
+    */
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == cut)
             code_area.cut();
@@ -267,6 +325,16 @@ public class Main implements ActionListener, KeyListener {
         
     }
 
+/*
+ █████╗ ████████╗ █████╗      ██╗ ██████╗ ███████╗
+██╔══██╗╚══██╔══╝██╔══██╗     ██║██╔═══██╗██╔════╝
+███████║   ██║   ███████║     ██║██║   ██║███████╗
+██╔══██║   ██║   ██╔══██║██   ██║██║   ██║╚════██║
+██║  ██║   ██║   ██║  ██║╚█████╔╝╚██████╔╝███████║
+╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝ ╚════╝  ╚═════╝ ╚══════╝
+                                                  
+*/
+
     @Override
     public void keyTyped(KeyEvent e) {
         // TODO Auto-generated method stub
@@ -291,7 +359,7 @@ public class Main implements ActionListener, KeyListener {
             JOptionPane.showMessageDialog(null, result);
             //Lexer();
         }
-
+        
         if ((e.getKeyCode() == KeyEvent.VK_S) && (e.getModifiers() & KeyEvent.CTRL_MASK) != 0) {
             try {
                 save_file();
@@ -300,9 +368,27 @@ public class Main implements ActionListener, KeyListener {
                 e1.printStackTrace();
             }
         }
-
+        
         if ((e.getKeyCode() == KeyEvent.VK_O) && (e.getModifiers() & KeyEvent.CTRL_MASK) != 0) {
             select_file();
+        }
+        if (e.getKeyCode() == KeyEvent.VK_F6) {
+            Tipos last = null;
+            ArrayList<Token> tokens = lex(code_area.getText());
+            String codigo_limpio = "";
+            for (Token token : tokens) {
+                if ((last == Tipos.SALTO && token.getTipo() == Tipos.SALTO) || (token.getTipo() == Tipos.COMENTARIO)) {
+                    
+                } else {
+                    if (token.getValor().equals("\\n")) {
+                        codigo_limpio += "\n";                   
+                    } else {
+                        codigo_limpio += token.getValor();
+                    }
+                    last = token.getTipo();
+                }
+            }
+            JOptionPane.showMessageDialog(null, codigo_limpio);
         }
         
 
